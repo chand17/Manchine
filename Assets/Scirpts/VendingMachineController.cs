@@ -16,58 +16,63 @@ public class VendingMachineController : MonoBehaviour
     public DropboxControl Dropbox;
     public DispenserControl dispenser;
 
+    //Properties
     public int Score;
-
-    private string wantedItem;
-    private TextMeshPro text;
+    [SerializeField] private int MaxItemCount;
+    [SerializeField] private InventoryItem[] AvailableItems;
     [SerializeField] private GameObject coin;
+
+    private TextMeshPro text;
+    private List<InventoryItem> droppedItems;
+    private VMCondition currentCondition; 
 
     void Awake()
     {
         Dropbox.OnItemDrop += ItemDropped;
         text = GetComponent<TextMeshPro>();
         audioSource = GetComponent<AudioSource>();
+        droppedItems = new List<InventoryItem>();
     }
 
-    void Start()
+    private VMCondition createCondition(InventoryItem[] availableItems)
     {
-        selectNextItem();
+        //Get Total Items
+        int totalItems = Random.Range(0, MaxItemCount);
+
+        //Get wantedItems array and ItemCost
+        string[] wantedItems = new string[totalItems];
+        int itemCosts = 0;
+
+        for (int i = 0; i < totalItems; i++)
+        {
+            int rand = Random.Range(0,availableItems.Length);
+            wantedItems[i] = availableItems[rand].ItemName;
+            itemCosts += availableItems[rand].ItemCost;
+        }
+
+        return new VMCondition(wantedItems, itemCosts);
     }
 
-    private string[] items = new string[] { "A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4"};
-    private void selectNextItem()
+    public bool CheckCondition()
     {
-        int rand = Random.Range(0, items.Length);
-        wantedItem = items[rand];
-        DisplayKeypad.SetDisplay(wantedItem, true);
-        dispenseCoins(rand + 1);
-    }
-    private void dispenseCoins(int amount)
-    {
-        dispenser.DispenseObject(coin, amount);
+        //Get string[] of droppedItems names
+        string[] itemNames = new string[droppedItems.Count];
+        for (int i = 0; i < itemNames.Length; i++)
+        {
+            itemNames[i] = droppedItems[i].ItemName;
+        }
+
+        //Get Coins dispersed
+        //TEMP
+        int coinsReceived = currentCondition.itemCosts;
+        //TEMP
+
+        return currentCondition.CheckCondition(itemNames, coinsReceived);
     }
 
     public void ItemDropped(GrabbableItem item)
     {
-       if(item !=null) checkDroppedItem(item.GetComponent<InventoryItem>());
-    }
-
-    private void checkDroppedItem(InventoryItem item)
-    {
-        if (item.ItemName.Equals(wantedItem))
-        {
-            Score++;
-            audioSource.clip = succeedClip;
-        }
-        else
-        {
-            Score--;
-            audioSource.clip = errorClip;
-        }
-
-        audioSource.Play();
-        text.text = "Score: " + Score.ToString();
-
-        selectNextItem();
+        InventoryItem newItem = item.GetComponent<InventoryItem>();
+        if(newItem != null) droppedItems.Add(newItem);
     }
 }
